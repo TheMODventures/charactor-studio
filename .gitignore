@@ -1,0 +1,32 @@
+
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md
+
+# Python and local settings
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.env
+.env.*
+!.env.example
+
+# Generated assets and model weights
+assets/**/*
+!assets/**/
+!assets/**/.gitkeep
+model_weights/*
+!model_weights/.gitkeep
+data/*
+!data/.gitkeep
+
+# Monorepo build and test artifacts
+node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+*.tsbuildinfo
+.ruff_cache/
+worker-heartbeat.json
+backend/.pytest_cache/
