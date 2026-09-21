@@ -49,6 +49,10 @@ class StorageService:
         return asset
 
     def upload(self, data: bytes, name: str, kind: str, rights: str, note: str):
+        if settings.fixed_demo_mode and kind == "image":
+            raise HTTPException(
+                403, "Image uploads are disabled; this MVP uses the built-in image"
+            )
         if kind not in {"image", "voice"} or rights not in {
             "original",
             "licensed",

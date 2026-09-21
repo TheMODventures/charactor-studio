@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DEMO_IMAGE_ID } from '../../shared/api/demo';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Server, Check, RefreshCw, ShieldCheck } from 'lucide-react';
 import { api } from '../../shared/api/client';
@@ -38,8 +39,8 @@ export function SettingsPage() {
     <>
       <PageTitle
         eyebrow="BEHIND THE SCENES"
-        title="Your studio, connected."
-        description="Open models, replaceable providers and clear ownership."
+        title="Settings"
+        description="Manage connections and uploaded assets."
         action={
           <button className="button secondary" disabled={busy} onClick={check}>
             <RefreshCw size={16} />
@@ -93,11 +94,11 @@ export function SettingsPage() {
       <section className="panel settings-panel">
         <h2>
           <ShieldCheck size={21} />
-          Rights and reusable assets
+          Demo assets
         </h2>
         <p>
-          Upload original fictional images and voices you own or have explicit permission to
-          synthesize. Keep the authorization details with each asset.
+          This MVP uses the included fictional scene. Image uploads and character editing are
+          disabled.
         </p>
         {assets.data?.length ? (
           <div className="asset-list">
@@ -109,9 +110,11 @@ export function SettingsPage() {
                     {a.kind} · {a.rights} · {a.rights_note}
                   </small>
                 </div>
-                <button className="button text" onClick={() => revoke(a.id)}>
-                  Revoke
-                </button>
+                {a.id !== DEMO_IMAGE_ID && (
+                  <button className="button text" onClick={() => revoke(a.id)}>
+                    Revoke
+                  </button>
+                )}
               </div>
             ))}
           </div>

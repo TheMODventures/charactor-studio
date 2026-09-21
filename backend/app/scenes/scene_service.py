@@ -1,3 +1,4 @@
+from app.config import settings
 from fastapi import HTTPException
 from app.characters.character_repository import CharacterRepository
 from app.shared.storage_service import StorageService
@@ -8,6 +9,10 @@ class SceneService:
         self.repository = repository
 
     def save(self, data, scene_id=None):
+        if settings.fixed_demo_mode:
+            raise HTTPException(
+                403, "This MVP uses the built-in scene; scene editing is disabled"
+            )
         if len(set(data.character_ids)) != 2:
             raise HTTPException(
                 422, "Choose two different characters, in left-to-right image order"

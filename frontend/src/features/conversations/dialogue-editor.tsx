@@ -1,10 +1,11 @@
-import { UnavailableFeature } from '../../shared/components/unavailable-feature';
-import { useCapabilities, unavailable } from '../../shared/api/use-capabilities';
-import { Plus, Trash2, Sparkles, LockKeyhole } from 'lucide-react';
 import { useState } from 'react';
+import { Plus, Trash2, Sparkles } from 'lucide-react';
 import type { Character, ConversationInput, Conversation } from '../../shared/api/types';
 import { api } from '../../shared/api/client';
+import { useCapabilities, unavailable } from '../../shared/api/use-capabilities';
+import { UnavailableFeature } from '../../shared/components/unavailable-feature';
 import { ErrorNotice } from '../../shared/components/ui';
+
 export function DialogueEditor({
   value,
   onChange,
@@ -19,9 +20,10 @@ export function DialogueEditor({
   onLoad: (c: Conversation) => void;
 }) {
   const capabilities = useCapabilities();
-  const [topic, setTopic] = useState(''),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState<unknown>();
+  const [showAI, setShowAI] = useState(false);
+  const [topic, setTopic] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>();
   const update = (v: Partial<ConversationInput>) => onChange({ ...value, ...v, approved: false });
   async function draft() {
     if (!capabilities.dialogue) return;
@@ -33,6 +35,7 @@ export function DialogueEditor({
         characters.slice(0, 2).map((c) => c.id),
       );
       update({ turns: result.turns, mode: 'generated' });
+      setShowAI(false);
     } catch (e) {
       setError(e);
     } finally {
@@ -40,96 +43,82 @@ export function DialogueEditor({
     }
   }
   return (
-    <section className="panel dialogue-panel">
+    <section className="panel simple-dialogue">
       <div className="panel-header">
         <div>
-          <span className="step">02</span>
-          <h2>The conversation</h2>
+          <span className="step">2</span>
+          <h2>Write the conversation</h2>
         </div>
-        <span className="small muted">
-          {value.turns.reduce((n, t) => n + t.text.trim().split(/\s+/).filter(Boolean).length, 0)}{' '}
-          words
-        </span>
+        <UnavailableFeature reason={capabilities.dialogueReason}>
+          <button className="button text" onClick={() => setShowAI(!showAI)}>
+            <Sparkles size={14} />
+            Write with AI
+          </button>
+        </UnavailableFeature>
       </div>
       <div className="panel-content">
-        <div className="field-row">
-          <label>
-            Conversation title
-            <input
-              value={value.title}
-              onChange={(e) => update({ title: e.target.value })}
-              placeholder="A little perspective"
-            />
-          </label>
-          {saved.length > 0 && (
-            <label>
-              Open saved
-              <select
-                aria-label="Open saved conversation"
-                defaultValue=""
-                onChange={(e) => {
-                  const c = saved.find((c) => c.id === e.target.value);
-                  if (c) onLoad(c);
-                }}
-              >
-                <option value="">Choose a script</option>
-                {saved.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </div>
-        <div className="segmented">
-          <button
-            className={value.mode === 'scripted' ? 'active' : ''}
-            onClick={() => update({ mode: 'scripted' })}
-          >
-            <LockKeyhole size={14} />
-            Write my dialogue
-          </button>
-          <UnavailableFeature reason={capabilities.dialogueReason}>
-            <button
-              className={value.mode === 'generated' ? 'active' : ''}
-              onClick={() => update({ mode: 'generated' })}
+        <p className="small muted">
+          Write each character’s exact words below. AI writing is a separate option.
+        </p>
+        <label>
+          Conversation name
+          <input
+            value={value.title}
+            onChange={(e) => update({ title: e.target.value })}
+            placeholder="My first conversation"
+          />
+        </label>
+        {saved.length > 0 && (
+          <details className="simple-details">
+            <summary>Open a saved conversation</summary>
+            <select
+              aria-label="Open saved conversation"
+              defaultValue=""
+              onChange={(e) => {
+                const script = saved.find((c) => c.id === e.target.value);
+                if (script) onLoad(script);
+              }}
             >
-              <Sparkles size={14} />
-              Draft with AI
-            </button>
-          </UnavailableFeature>
-        </div>
-        {value.mode === 'generated' && (
+              <option value="">Choose a conversation</option>
+              {saved.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.title}
+                </option>
+              ))}
+            </select>
+          </details>
+        )}
+        {showAI && (
           <div className="ai-prompt">
             <label>
-              What are they talking about?
+              What should they talk about?
               <input
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                placeholder="Finding joy in the small things…"
+                placeholder="A topic for the conversation"
               />
             </label>
             <UnavailableFeature reason={capabilities.dialogueReason}>
               <button
                 className="button secondary"
                 onClick={draft}
-                disabled={busy || topic.length < 3 || characters.length < 2}
+                disabled={busy || topic.length < 3 || characters.length !== 2}
               >
-                {busy ? 'Drafting…' : 'Generate draft'}
+                {busy ? 'Writing…' : 'Generate draft'}
               </button>
             </UnavailableFeature>
-            <p className="hint">
-              Uses your configured Qwen service. Every draft stays editable until you approve it.
-            </p>
           </div>
         )}
         <ErrorNotice error={error} />
         <div className="turns">
           {value.turns.map((turn, index) => {
-            const c = characters.find((c) => c.id === turn.character_id);
+            const character = characters.find((c) => c.id === turn.character_id);
             return (
-              <div className="turn" key={index} style={{ borderLeftColor: c?.color || '#ccc' }}>
+              <div
+                className="turn"
+                key={index}
+                style={{ borderLeftColor: character?.color || '#ccc' }}
+              >
                 <div className="row between">
                   <select
                     aria-label={`Speaker ${index + 1}`}
@@ -145,6 +134,11 @@ export function DialogueEditor({
                     <option value="" disabled>
                       Choose character
                     </option>
+                    {!character && turn.character_id && (
+                      <option value={turn.character_id} disabled>
+                        Choose a character from this scene
+                      </option>
+                    )}
                     {characters.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
@@ -162,9 +156,9 @@ export function DialogueEditor({
                 </div>
                 <textarea
                   aria-label={`Dialogue line ${index + 1}`}
-                  rows={3}
+                  rows={2}
                   value={turn.text}
-                  placeholder="What would they say?"
+                  placeholder={`What does ${character?.name || 'this character'} say?`}
                   onChange={(e) =>
                     update({
                       turns: value.turns.map((t, i) =>
@@ -173,13 +167,45 @@ export function DialogueEditor({
                     })
                   }
                 />
-                <UnavailableFeature
-                  reason={!capabilities.animation ? unavailable.performance : undefined}
-                >
-                  <div className="turn-footer">
+              </div>
+            );
+          })}
+        </div>
+        <div className="simple-line-actions">
+          <button
+            className="button secondary"
+            disabled={value.turns.length >= 40 || characters.length !== 2}
+            onClick={() =>
+              update({
+                turns: [
+                  ...value.turns,
+                  {
+                    character_id: characters[value.turns.length % 2]?.id || '',
+                    text: '',
+                    direction: '',
+                    pause_after: 0.4,
+                  },
+                ],
+              })
+            }
+          >
+            <Plus size={16} />
+            Add line
+          </button>
+          <span className="small muted">
+            {value.turns.reduce((n, t) => n + t.text.trim().split(/\s+/).filter(Boolean).length, 0)}{' '}
+            words
+          </span>
+        </div>
+        <details className="simple-details">
+          <summary>Delivery options</summary>
+          <UnavailableFeature reason={unavailable.performance}>
+            <div className="details-content">
+              {value.turns.map((turn, index) => (
+                <div className="field-row" key={index}>
+                  <label>
+                    Line {index + 1} · direction
                     <input
-                      aria-label={`Direction ${index + 1}`}
-                      placeholder="Performance note, e.g. a knowing smile"
                       value={turn.direction}
                       onChange={(e) =>
                         update({
@@ -189,61 +215,36 @@ export function DialogueEditor({
                         })
                       }
                     />
-                    <label>
-                      Pause
-                      <input
-                        type="number"
-                        min="0"
-                        max="5"
-                        step="0.1"
-                        value={turn.pause_after}
-                        onChange={(e) =>
-                          update({
-                            turns: value.turns.map((t, i) =>
-                              i === index ? { ...t, pause_after: +e.target.value } : t,
-                            ),
-                          })
-                        }
-                      />
-                      s
-                    </label>
-                  </div>
-                </UnavailableFeature>
-              </div>
-            );
-          })}
-        </div>
-        <button
-          className="add-line"
-          onClick={() =>
-            update({
-              turns: [
-                ...value.turns,
-                {
-                  character_id:
-                    characters[value.turns.length % Math.max(1, characters.length)]?.id || '',
-                  text: '',
-                  direction: '',
-                  pause_after: 0.4,
-                },
-              ],
-            })
-          }
-          disabled={value.turns.length >= 40}
-        >
-          <Plus size={16} />
-          Add dialogue line
-        </button>
-        <p className="hint">
-          Scripted words are preserved. Performance notes stay separate from spoken text.
-        </p>
+                  </label>
+                  <label>
+                    Pause after (seconds)
+                    <input
+                      type="number"
+                      min="0"
+                      max="5"
+                      step="0.1"
+                      value={turn.pause_after}
+                      onChange={(e) =>
+                        update({
+                          turns: value.turns.map((t, i) =>
+                            i === index ? { ...t, pause_after: +e.target.value } : t,
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+          </UnavailableFeature>
+        </details>
         <label className="check">
           <input
             type="checkbox"
             checked={value.approved}
             onChange={(e) => onChange({ ...value, approved: e.target.checked })}
           />
-          I approve these exact words for rendering.
+          I approve these exact words for the conversation.
         </label>
       </div>
     </section>

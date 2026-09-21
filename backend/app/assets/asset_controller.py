@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_session
 from app.shared.storage_service import StorageService
 from app.assets.asset_model import Asset
+from app.config import settings
 from app.generations.generation_model import Generation
 
 router = APIRouter(prefix="/assets", tags=["assets"])
@@ -38,6 +39,8 @@ async def upload(
     consent: bool = Form(...),
     db: Session = Depends(get_session),
 ):
+    if settings.fixed_demo_mode and kind == "image":
+        raise HTTPException(403, "Image uploads are disabled for this MVP")
     if not consent:
         raise HTTPException(422, "Rights confirmation is required")
     data = await file.read(20 * 1024 * 1024 + 1)
@@ -73,6 +76,8 @@ def download(asset_id: str, db: Session = Depends(get_session)):
 
 @router.post("/{asset_id}/revoke")
 def revoke(asset_id: str, db: Session = Depends(get_session)):
+    if settings.fixed_demo_mode and asset_id == "mvp-scene-image":
+        raise HTTPException(403, "The built-in demo image cannot be removed")
     asset = StorageService(db).get(asset_id)
     asset.revoked = True
     db.commit()

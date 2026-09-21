@@ -32,8 +32,8 @@ export function RendersPage() {
     <>
       <PageTitle
         eyebrow="YOUR PRODUCTIONS"
-        title="From conversation to creation."
-        description="Follow each render, review the performance and keep the takes you love."
+        title="Your videos"
+        description="See progress, preview your videos and download them."
       />
       <ErrorNotice error={error || query.error} />
       {query.isLoading ? (

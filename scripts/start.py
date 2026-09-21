@@ -5,10 +5,18 @@ import signal
 import subprocess
 import sys
 import time
+import secrets
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 env = {**os.environ, "PYTHONPATH": str(root / "backend")}
+bundled_models = os.getenv("START_MODEL_SERVICE", "false").lower() == "true"
+if bundled_models:
+    env["PROVIDER_TOKEN"] = env.get("PROVIDER_TOKEN") or secrets.token_urlsafe(32)
+    env["SPEECH_URL"] = "http://127.0.0.1:8001"
+    env["VIDEO_URL"] = "http://127.0.0.1:8001"
+    env["SPEECH_PROVIDER"] = "kokoro"
+    env["VIDEO_PROVIDER"] = "sadtalker"
 subprocess.run(
     [sys.executable, "-c", "from app.bootstrap import initialize; initialize()"],
     env=env,
@@ -31,6 +39,23 @@ def stop(*args):
 
 signal.signal(signal.SIGTERM, stop)
 signal.signal(signal.SIGINT, stop)
+if bundled_models:
+    processes.append(
+        subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "model_services.lightweight_service:app",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8001",
+            ],
+            env=env,
+            cwd=root,
+        )
+    )
 processes.append(
     subprocess.Popen(
         [

@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import httpx
 from fastapi import APIRouter
 from app.config import settings
+from app.ai.provider_readiness import lightweight_ready
 
 router = APIRouter(prefix="/system", tags=["system"])
 
@@ -26,21 +27,30 @@ def status():
                 "name": settings.dialogue_model,
                 "configured": bool(settings.ollama_url),
             },
-            "speech": {"name": "Chatterbox", "configured": bool(settings.speech_url)},
-            "video": {"name": "InfiniteTalk", "configured": bool(settings.video_url)},
+            "speech": {
+                "name": settings.speech_provider,
+                "configured": bool(settings.speech_url),
+            },
+            "video": {
+                "name": settings.video_provider,
+                "configured": bool(settings.video_url),
+            },
         },
         "capabilities": {
             "scripted_dialogue": True,
+            "performance_controls": False,
             "storyboard": True,
             "ai_dialogue": bool(settings.enable_ai_drafts and settings.ollama_url),
             "animated_video": bool(
                 settings.enable_animated_renders
                 and settings.speech_url
                 and settings.video_url
+                and (settings.video_provider != "sadtalker" or lightweight_ready())
             ),
         },
         "limitations": [
-            "Speech styles are preferences, not guaranteed dialect controls.",
+            "Preset voices do not guarantee dialect or emotional delivery.",
+            "SadTalker animates two portraits independently; shared reactions and body gestures are not generated.",
             "Review exact words, faces, lip-sync and listening reactions after GPU generation.",
             "Uploaded likenesses must depict fictional characters; third-party real-person likeness verification is not enabled.",
         ],

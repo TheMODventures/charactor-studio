@@ -11,6 +11,7 @@ export interface Profile {
   pace: number;
   gestures: string;
   voice_notes: string;
+  voice_preset?: string;
 }
 export interface Character {
   id: string;

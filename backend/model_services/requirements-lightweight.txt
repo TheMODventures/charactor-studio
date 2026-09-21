@@ -1,0 +1,4 @@
+# Install CPU torch first; see Dockerfile.
+kokoro==0.9.4
+soundfile>=0.12,<1
+numpy>=1.26,<2

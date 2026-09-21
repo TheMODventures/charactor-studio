@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,13 +10,16 @@ class Settings(BaseSettings):
     assets_dir: Path = Path("assets")
     model_weights_dir: Path = Path("model_weights")
     ollama_url: str = "http://127.0.0.1:11434"
-    dialogue_model: str = "qwen3:8b"
+    dialogue_model: str = "qwen3:1.7b"
+    speech_provider: Literal["kokoro", "chatterbox"] = "kokoro"
+    video_provider: Literal["sadtalker", "infinitetalk"] = "sadtalker"
     speech_url: str = ""
     video_url: str = ""
     provider_token: str = ""
     provider_timeout: int = 1800
     worker_poll_seconds: float = 2
     seed_characters: bool = True
+    fixed_demo_mode: bool = True
     enable_ai_drafts: bool = False
     enable_animated_renders: bool = False
 

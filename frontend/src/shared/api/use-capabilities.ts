@@ -5,7 +5,7 @@ export const unavailable = {
   dialogue:
     'AI dialogue drafting is not functional at the moment for this MVP. You can write and save dialogue manually.',
   animation:
-    'Animated speech, lip-sync and gestures are not functional at the moment for this MVP. You can prepare a silent storyboard.',
+    'Talking video is unavailable until the GPU model service is ready and rendering is enabled. You can prepare a silent storyboard.',
   speechStyle:
     'Automatic speech-style controls are not functional at the moment for this MVP. Existing preferences are preserved.',
   performance:

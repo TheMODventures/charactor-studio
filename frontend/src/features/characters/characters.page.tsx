@@ -12,8 +12,8 @@ export function CharactersPage() {
     <>
       <PageTitle
         eyebrow="YOUR CAST"
-        title="Characters with character."
-        description="Distinct voices. Individual personalities. Always yours."
+        title="Your characters"
+        description="Save each character’s look, personality and voice reference."
         action={
           <button className="button primary" onClick={() => setEditing(null)}>
             <Plus size={17} />

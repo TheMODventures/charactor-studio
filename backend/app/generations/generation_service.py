@@ -7,6 +7,7 @@ from app.scenes.scene_repository import SceneRepository
 from app.scenes.scene_schema import SceneRead
 from app.shared.storage_service import StorageService
 from app.config import settings
+from app.ai.provider_readiness import lightweight_ready
 
 
 class GenerationService:
@@ -15,6 +16,10 @@ class GenerationService:
 
     def create(self, data):
         self.check_feature(data.kind)
+        if settings.fixed_demo_mode and data.scene_id != "mvp-scene":
+            raise HTTPException(
+                403, "Only the built-in scene can be rendered in this MVP"
+            )
         db = self.repository.session
         conversation = ConversationRepository(db).get(data.conversation_id)
         scene = SceneRepository(db).get(data.scene_id)
@@ -33,7 +38,7 @@ class GenerationService:
         for c in characters:
             if c.archived:
                 raise HTTPException(422, "Restore archived characters before rendering")
-            if data.kind == "animated":
+            if data.kind == "animated" and settings.speech_provider == "chatterbox":
                 if not c.voice_asset_id:
                     raise HTTPException(
                         422, f"Add an authorized voice reference for {c.name}"
@@ -44,9 +49,13 @@ class GenerationService:
         ):
             raise HTTPException(
                 503,
-                "GPU services are not configured. Connect Chatterbox and InfiniteTalk in deployment settings. A storyboard is available without GPU services.",
+                "GPU services are not configured. Start the configured speech and video model services. A storyboard is available without GPU services.",
             )
-        if data.kind == "animated" and len({c.voice_asset_id for c in characters}) != 2:
+        if (
+            data.kind == "animated"
+            and settings.speech_provider == "chatterbox"
+            and len({c.voice_asset_id for c in characters}) != 2
+        ):
             raise HTTPException(422, "Choose two distinct voice references")
         snapshot = {
             "kind": data.kind,
@@ -60,8 +69,8 @@ class GenerationService:
                 for c in characters
             ],
             "providers": {
-                "speech": "chatterbox",
-                "video": "infinitetalk",
+                "speech": settings.speech_provider,
+                "video": settings.video_provider,
                 "dialogue": settings.dialogue_model,
             },
         }
@@ -80,9 +89,25 @@ class GenerationService:
                 503,
                 "Animated speech and lip-sync are not functional at the moment for this MVP",
             )
+        if (
+            kind == "animated"
+            and settings.video_provider == "sadtalker"
+            and not lightweight_ready()
+        ):
+            raise HTTPException(
+                503,
+                "Kokoro/SadTalker service is not ready. Check the GPU deployment logs.",
+            )
 
     def retry(self, job):
         self.check_feature(job.settings["kind"])
+        if (
+            settings.fixed_demo_mode
+            and job.settings["scene"]["image_asset_id"] != "mvp-scene-image"
+        ):
+            raise HTTPException(
+                403, "Older custom scenes cannot be re-rendered in this MVP"
+            )
         if job.status not in {"failed", "cancelled"}:
             raise HTTPException(409, "Only failed or cancelled jobs can be retried")
         # Preserve the original versioned inputs, even after character edits.

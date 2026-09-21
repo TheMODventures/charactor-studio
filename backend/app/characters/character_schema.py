@@ -15,6 +15,7 @@ class CharacterProfile(BaseModel):
     pace: float = Field(default=1, ge=0.8, le=1.2)
     gestures: str = Field(default="Subtle conversational gestures", max_length=1000)
     voice_notes: str = Field(default="", max_length=1000)
+    voice_preset: str = Field(default="af_heart", pattern=r"^af_[a-z]+$")
 
 
 class CharacterCreate(BaseModel):

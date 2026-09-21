@@ -11,8 +11,7 @@ from app.generations.generation_model import Generation
 from app.shared.storage_service import StorageService
 from app.shared.audio_service import AudioService
 from app.shared.video_service import VideoService
-from app.ai.chatterbox_provider import ChatterboxProvider
-from app.ai.infinitetalk_provider import InfiniteTalkProvider
+from app.ai.provider_factory import speech_provider, video_provider
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +49,11 @@ def run_generation(job_id: str):
 
         try:
             snapshot = job.settings
+            if (
+                settings.fixed_demo_mode
+                and snapshot["scene"]["image_asset_id"] != "mvp-scene-image"
+            ):
+                raise ValueError("Only the built-in scene can be rendered in this MVP")
             if snapshot["kind"] == "animated" and not settings.enable_animated_renders:
                 raise ValueError(
                     "Animated speech and lip-sync are not functional at the moment for this MVP"
@@ -65,18 +69,32 @@ def run_generation(job_id: str):
                 VideoService().storyboard(image, output, snapshot["target_seconds"])
                 duration = snapshot["target_seconds"]
             else:
+                providers = snapshot["providers"]
+                if (
+                    providers["speech"] != settings.speech_provider
+                    or providers["video"] != settings.video_provider
+                ):
+                    raise ValueError(
+                        "Providers changed since this job was saved. Create a new render."
+                    )
+                speech = speech_provider(providers["speech"])
+                video = video_provider(providers["video"])
                 characters = {c["id"]: c for c in snapshot["characters"]}
                 turns = snapshot["conversation"]["turns"]
                 clips = []
                 audio = AudioService()
                 for index, turn in enumerate(turns):
                     c = characters[turn["character_id"]]
-                    voice = storage.path(storage.get(c["voice_asset_id"], "voice"))
+                    voice = (
+                        storage.path(storage.get(c["voice_asset_id"], "voice"))
+                        if providers["speech"] == "chatterbox"
+                        else None
+                    )
                     progress(
                         f"Generating voice {index + 1}/{len(turns)}",
                         10 + int(35 * index / len(turns)),
                     )
-                    raw = ChatterboxProvider().synthesize(
+                    raw = speech.synthesize(
                         turn["text"], voice, folder / f"raw-{index}.wav", c["profile"]
                     )
                     clips.append(
@@ -95,7 +113,12 @@ def run_generation(job_id: str):
                     snapshot["target_seconds"],
                 )
                 (folder / "timeline.json").write_text(json.dumps(timeline, indent=2))
-                progress("Animating the shared scene", 65)
+                progress(
+                    "Animating both portraits"
+                    if providers["video"] == "sadtalker"
+                    else "Animating the shared scene",
+                    65,
+                )
                 prompt = (
                     scene["prompt"]
                     + " Left-to-right character performance: "
@@ -121,15 +144,16 @@ def run_generation(job_id: str):
                         for t in timeline
                     ]
                 )
-                raw_video = InfiniteTalkProvider().generate(
-                    image, tracks, folder / "raw.mp4", prompt
-                )
+                raw_video = video.generate(image, tracks, folder / "raw.mp4", prompt)
                 progress("Mixing and exporting", 90)
                 VideoService().finalize(raw_video, folder / "mix.wav", output)
             # Revocation during a long render prevents publishing its output.
             db.expire_all()
             storage.get(scene["image_asset_id"], "image")
-            if snapshot["kind"] == "animated":
+            if (
+                snapshot["kind"] == "animated"
+                and snapshot["providers"]["speech"] == "chatterbox"
+            ):
                 for c in snapshot["characters"]:
                     storage.get(c["voice_asset_id"], "voice")
             job.duration = duration
