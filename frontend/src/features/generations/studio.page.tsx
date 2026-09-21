@@ -1,3 +1,5 @@
+import { UnavailableFeature } from '../../shared/components/unavailable-feature';
+import { useCapabilities } from '../../shared/api/use-capabilities';
 import { useEffect, useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +11,7 @@ import { SceneEditor } from '../scenes/scene-editor';
 import { DialogueEditor } from '../conversations/dialogue-editor';
 import { CharacterEditor } from '../characters/character-editor';
 export function StudioPage() {
+  const capabilities = useCapabilities();
   const chars = useQuery({ queryKey: ['characters'], queryFn: api.characters }),
     scripts = useQuery({ queryKey: ['conversations'], queryFn: api.conversations }),
     scenes = useQuery({ queryKey: ['scenes'], queryFn: api.scenes }),
@@ -72,6 +75,8 @@ export function StudioPage() {
     }
   }, [chars.data]);
   async function save(render = false) {
+    if (render && (capabilities.workerReason || (kind === 'animated' && !capabilities.animation)))
+      return;
     setBusy(true);
     setError(null);
     setNotice('');
@@ -195,13 +200,29 @@ export function StudioPage() {
           <span className="eyebrow">READY WHEN YOU ARE</span>
           <h3>Make the moment.</h3>
         </div>
-        <label>
-          Output
-          <select value={kind} onChange={(e) => setKind(e.target.value)}>
-            <option value="storyboard">Silent storyboard</option>
-            <option value="animated">Animated conversation</option>
-          </select>
-        </label>
+        <div className="output-field">
+          <span>Output</span>
+          <div className="output-options" role="group" aria-label="Output">
+            <button
+              type="button"
+              aria-pressed={kind === 'storyboard'}
+              className={kind === 'storyboard' ? 'active' : ''}
+              onClick={() => setKind('storyboard')}
+            >
+              Silent storyboard
+            </button>
+            <UnavailableFeature reason={capabilities.animationReason}>
+              <button
+                type="button"
+                aria-pressed={kind === 'animated'}
+                className={kind === 'animated' ? 'active' : ''}
+                onClick={() => setKind('animated')}
+              >
+                Animated conversation
+              </button>
+            </UnavailableFeature>
+          </div>
+        </div>
         <label>
           Duration
           <select value={seconds} onChange={(e) => setSeconds(+e.target.value)}>
@@ -217,14 +238,23 @@ export function StudioPage() {
           <Save size={16} />
           {busy ? 'Saving…' : 'Save project'}
         </button>
-        <button className="button primary" onClick={() => save(true)} disabled={busy || !ready}>
-          {kind === 'storyboard' ? 'Create storyboard' : 'Render conversation'}
-          <ArrowRight size={17} />
-        </button>
+        <UnavailableFeature
+          reason={
+            kind === 'animated'
+              ? capabilities.animationReason || capabilities.workerReason
+              : capabilities.workerReason
+          }
+          className="render-action"
+        >
+          <button className="button primary" onClick={() => save(true)} disabled={busy || !ready}>
+            {kind === 'storyboard' ? 'Create storyboard' : 'Render conversation'}
+            <ArrowRight size={17} />
+          </button>
+        </UnavailableFeature>
       </section>
       <p className="render-disclaimer">
         {kind === 'storyboard'
-          ? 'Storyboards show the scene only, without speech or animation. Choose animated conversation for the full performance.'
+          ? 'Storyboards show the scene only, without speech or animation. Animated conversations are unavailable in this MVP until enabled.'
           : status.data?.capabilities.animated_video
             ? 'Animated renders use your connected GPU services and require two authorized voice references.'
             : 'Animated rendering needs Chatterbox and InfiniteTalk GPU services. Configure them in your Hugging Face deployment.'}

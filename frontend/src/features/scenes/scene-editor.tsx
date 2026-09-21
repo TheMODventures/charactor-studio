@@ -1,3 +1,5 @@
+import { UnavailableFeature } from '../../shared/components/unavailable-feature';
+import { useCapabilities, unavailable } from '../../shared/api/use-capabilities';
 import { ImagePlus, Check } from 'lucide-react';
 import type { Character, SceneInput, Scene } from '../../shared/api/types';
 import { assetUrl } from '../../shared/api/client';
@@ -15,6 +17,7 @@ export function SceneEditor({
   saved: Scene[];
   onLoad: (s: Scene) => void;
 }) {
+  const capabilities = useCapabilities();
   const update = (v: Partial<SceneInput>) => onChange({ ...value, ...v, approved: false });
   return (
     <section className="panel">
@@ -101,14 +104,16 @@ export function SceneEditor({
           Two separate portraits can be saved to character profiles. This renderer needs one
           composed scene image; it does not merge portraits automatically.
         </p>
-        <label>
-          Scene direction
-          <textarea
-            rows={2}
-            value={value.prompt}
-            onChange={(e) => update({ prompt: e.target.value })}
-          />
-        </label>
+        <UnavailableFeature reason={!capabilities.animation ? unavailable.performance : undefined}>
+          <label>
+            Scene direction
+            <textarea
+              rows={2}
+              value={value.prompt}
+              onChange={(e) => update({ prompt: e.target.value })}
+            />
+          </label>
+        </UnavailableFeature>
         <label className="check">
           <input
             type="checkbox"

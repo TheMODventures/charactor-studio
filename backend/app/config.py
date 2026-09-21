@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     provider_timeout: int = 1800
     worker_poll_seconds: float = 2
     seed_characters: bool = True
+    enable_ai_drafts: bool = False
+    enable_animated_renders: bool = False
 
 
 settings = Settings()

@@ -1405,3 +1405,122 @@ code {
     flex-shrink: 0;
   }
 }
+
+/* Disabled MVP features remain discoverable by pointer, keyboard and touch. */
+.feature-gate {
+  min-width: 0;
+}
+.feature-gate-controls {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.feature-gate.is-unavailable {
+  cursor: not-allowed;
+  border-radius: 6px;
+}
+.feature-gate.is-unavailable > .feature-gate-controls {
+  opacity: 0.48;
+  pointer-events: none;
+  user-select: none;
+}
+.feature-gate.is-unavailable button:disabled {
+  opacity: 1;
+}
+.feature-toast {
+  position: fixed;
+  z-index: 10000;
+  bottom: 24px;
+  right: 24px;
+  width: min(380px, calc(100vw - 32px));
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #292531;
+  color: #f3eef9;
+  border: 1px solid #574766;
+  border-radius: 10px;
+  padding: 16px 18px;
+  box-shadow: 0 12px 40px #20152930;
+  pointer-events: none;
+  text-align: left;
+  cursor: default;
+}
+.feature-toast > svg {
+  color: #c9adee;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.feature-toast strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+}
+.feature-toast p {
+  color: #c7bdcf;
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.segmented > .feature-gate {
+  flex: 1;
+}
+.segmented .feature-gate-controls,
+.segmented .feature-gate button {
+  width: 100%;
+  height: 100%;
+}
+.output-field > span {
+  display: block;
+  color: #68656f;
+  font-size: 8px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.output-options {
+  display: flex;
+  padding: 3px;
+  border: 1px solid #ded8e6;
+  border-radius: 6px;
+  background: #e8e4ed;
+}
+.output-options button {
+  background: none;
+  color: #7d7387;
+  font-size: 9px;
+  padding: 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.output-options button.active {
+  background: #fff;
+  color: #665277;
+  box-shadow: 0 1px 3px #2b1b4310;
+}
+.render-action .button {
+  width: 100%;
+}
+@media (max-width: 650px) {
+  .feature-toast {
+    right: 16px;
+    bottom: 16px;
+  }
+  .render-bar .render-action {
+    flex: 1;
+  }
+  .render-bar .output-field {
+    flex: 1;
+  }
+}

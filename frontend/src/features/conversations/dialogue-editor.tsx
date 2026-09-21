@@ -1,3 +1,5 @@
+import { UnavailableFeature } from '../../shared/components/unavailable-feature';
+import { useCapabilities, unavailable } from '../../shared/api/use-capabilities';
 import { Plus, Trash2, Sparkles, LockKeyhole } from 'lucide-react';
 import { useState } from 'react';
 import type { Character, ConversationInput, Conversation } from '../../shared/api/types';
@@ -16,11 +18,13 @@ export function DialogueEditor({
   saved: Conversation[];
   onLoad: (c: Conversation) => void;
 }) {
+  const capabilities = useCapabilities();
   const [topic, setTopic] = useState(''),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>();
   const update = (v: Partial<ConversationInput>) => onChange({ ...value, ...v, approved: false });
   async function draft() {
+    if (!capabilities.dialogue) return;
     setBusy(true);
     setError(null);
     try {
@@ -86,13 +90,15 @@ export function DialogueEditor({
             <LockKeyhole size={14} />
             Write my dialogue
           </button>
-          <button
-            className={value.mode === 'generated' ? 'active' : ''}
-            onClick={() => update({ mode: 'generated' })}
-          >
-            <Sparkles size={14} />
-            Draft with AI
-          </button>
+          <UnavailableFeature reason={capabilities.dialogueReason}>
+            <button
+              className={value.mode === 'generated' ? 'active' : ''}
+              onClick={() => update({ mode: 'generated' })}
+            >
+              <Sparkles size={14} />
+              Draft with AI
+            </button>
+          </UnavailableFeature>
         </div>
         {value.mode === 'generated' && (
           <div className="ai-prompt">
@@ -104,13 +110,15 @@ export function DialogueEditor({
                 placeholder="Finding joy in the small things…"
               />
             </label>
-            <button
-              className="button secondary"
-              onClick={draft}
-              disabled={busy || topic.length < 3 || characters.length < 2}
-            >
-              {busy ? 'Drafting…' : 'Generate draft'}
-            </button>
+            <UnavailableFeature reason={capabilities.dialogueReason}>
+              <button
+                className="button secondary"
+                onClick={draft}
+                disabled={busy || topic.length < 3 || characters.length < 2}
+              >
+                {busy ? 'Drafting…' : 'Generate draft'}
+              </button>
+            </UnavailableFeature>
             <p className="hint">
               Uses your configured Qwen service. Every draft stays editable until you approve it.
             </p>
@@ -165,38 +173,42 @@ export function DialogueEditor({
                     })
                   }
                 />
-                <div className="turn-footer">
-                  <input
-                    aria-label={`Direction ${index + 1}`}
-                    placeholder="Performance note, e.g. a knowing smile"
-                    value={turn.direction}
-                    onChange={(e) =>
-                      update({
-                        turns: value.turns.map((t, i) =>
-                          i === index ? { ...t, direction: e.target.value } : t,
-                        ),
-                      })
-                    }
-                  />
-                  <label>
-                    Pause
+                <UnavailableFeature
+                  reason={!capabilities.animation ? unavailable.performance : undefined}
+                >
+                  <div className="turn-footer">
                     <input
-                      type="number"
-                      min="0"
-                      max="5"
-                      step="0.1"
-                      value={turn.pause_after}
+                      aria-label={`Direction ${index + 1}`}
+                      placeholder="Performance note, e.g. a knowing smile"
+                      value={turn.direction}
                       onChange={(e) =>
                         update({
                           turns: value.turns.map((t, i) =>
-                            i === index ? { ...t, pause_after: +e.target.value } : t,
+                            i === index ? { ...t, direction: e.target.value } : t,
                           ),
                         })
                       }
                     />
-                    s
-                  </label>
-                </div>
+                    <label>
+                      Pause
+                      <input
+                        type="number"
+                        min="0"
+                        max="5"
+                        step="0.1"
+                        value={turn.pause_after}
+                        onChange={(e) =>
+                          update({
+                            turns: value.turns.map((t, i) =>
+                              i === index ? { ...t, pause_after: +e.target.value } : t,
+                            ),
+                          })
+                        }
+                      />
+                      s
+                    </label>
+                  </div>
+                </UnavailableFeature>
               </div>
             );
           })}

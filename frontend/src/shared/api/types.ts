@@ -82,6 +82,6 @@ export interface Generation {
 export interface SystemStatus {
   worker: boolean;
   providers: Record<string, { name: string; configured: boolean }>;
-  capabilities: { animated_video: boolean };
+  capabilities: { ai_dialogue: boolean; animated_video: boolean };
   limitations: string[];
 }

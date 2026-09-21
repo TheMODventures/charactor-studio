@@ -1,3 +1,5 @@
+import { UnavailableFeature } from '../../shared/components/unavailable-feature';
+import { useCapabilities } from '../../shared/api/use-capabilities';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, RefreshCw, X, FileJson, CheckCircle2 } from 'lucide-react';
@@ -5,6 +7,7 @@ import { api, assetUrl } from '../../shared/api/client';
 import type { Generation } from '../../shared/api/types';
 import { Empty, ErrorNotice, Loading, PageTitle, Modal } from '../../shared/components/ui';
 export function RendersPage() {
+  const capabilities = useCapabilities();
   const query = useQuery({ queryKey: ['generations'], queryFn: api.jobs, refetchInterval: 3000 }),
     client = useQueryClient();
   const [error, setError] = useState<unknown>(),
@@ -112,13 +115,21 @@ export function RendersPage() {
                     </button>
                   )}
                   {['failed', 'cancelled'].includes(job.status) && (
-                    <button
-                      className="button secondary"
-                      onClick={() => action(() => api.retry(job.id))}
+                    <UnavailableFeature
+                      reason={
+                        job.settings.kind === 'animated'
+                          ? capabilities.animationReason || capabilities.workerReason
+                          : capabilities.workerReason
+                      }
                     >
-                      <RefreshCw size={15} />
-                      Retry
-                    </button>
+                      <button
+                        className="button secondary"
+                        onClick={() => action(() => api.retry(job.id))}
+                      >
+                        <RefreshCw size={15} />
+                        Retry
+                      </button>
+                    </UnavailableFeature>
                   )}
                   {job.status === 'completed' && job.settings.kind === 'animated' && (
                     <button

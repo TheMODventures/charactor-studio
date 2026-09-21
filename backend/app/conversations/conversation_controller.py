@@ -7,6 +7,7 @@ from app.conversations.conversation_schema import ConversationCreate, Conversati
 from app.conversations.conversation_schema import DraftRequest
 from app.characters.character_repository import CharacterRepository
 from app.ai.qwen_provider import QwenProvider
+from app.config import settings
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -23,6 +24,10 @@ def create(data: ConversationCreate, db: Session = Depends(get_session)):
 
 @router.post("/draft")
 def draft(data: DraftRequest, db: Session = Depends(get_session)):
+    if not settings.enable_ai_drafts:
+        raise HTTPException(
+            503, "AI dialogue drafting is not functional at the moment for this MVP"
+        )
     characters = [CharacterRepository(db).get(i) for i in data.character_ids]
     if len(set(data.character_ids)) != 2 or any(c.archived for c in characters):
         raise HTTPException(422, "Choose two distinct active characters")

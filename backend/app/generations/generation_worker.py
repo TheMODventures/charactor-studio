@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+import threading
 from datetime import datetime, timezone
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -49,6 +50,10 @@ def run_generation(job_id: str):
 
         try:
             snapshot = job.settings
+            if snapshot["kind"] == "animated" and not settings.enable_animated_renders:
+                raise ValueError(
+                    "Animated speech and lip-sync are not functional at the moment for this MVP"
+                )
             storage = StorageService(db)
             scene = snapshot["scene"]
             image = storage.path(storage.get(scene["image_asset_id"], "image"))
@@ -169,11 +174,17 @@ def main():
         )
         db.commit()
     heartbeat = settings.assets_dir.parent / "worker-heartbeat.json"
+
+    def report_heartbeat():
+        while True:
+            heartbeat.parent.mkdir(parents=True, exist_ok=True)
+            heartbeat.write_text(
+                json.dumps({"updated_at": datetime.now(timezone.utc).isoformat()})
+            )
+            time.sleep(5)
+
+    threading.Thread(target=report_heartbeat, daemon=True).start()
     while True:
-        heartbeat.parent.mkdir(parents=True, exist_ok=True)
-        heartbeat.write_text(
-            json.dumps({"updated_at": datetime.now(timezone.utc).isoformat()})
-        )
         job_id = claim_job()
         if job_id:
             run_generation(job_id)

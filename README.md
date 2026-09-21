@@ -117,3 +117,18 @@ The included shared-scene reference is AI-generated and fictional. It is a start
 proposal, not client-approved likeness or voice material. Real-person face uploads
 are disabled under this prototype's rights policy. Voice uploads require explicit
 rights attestation; this is not an automated identity-verification system.
+
+## Disabled MVP controls
+
+AI drafts, animated conversation rendering, and their speech/performance controls
+are disabled by default. Hover, keyboard-focus, or tap a disabled area to see why.
+Manual scripts, profiles, uploads, scene setup and saved outputs stay available.
+Storyboards and render retries are disabled when the worker heartbeat is missing.
+Existing profile and performance values are preserved while their controls are locked.
+
+The backend also blocks AI-draft and animated-generation requests, including retries.
+After validating the corresponding model integrations, explicitly set
+`ENABLE_AI_DRAFTS=true` and/or `ENABLE_ANIMATED_RENDERS=true`, configure the required
+service URLs and restart the backend. A successful connection check alone does not
+enable a feature. Free-form voice-direction instructions remain disabled because
+the current speech adapter does not apply them.

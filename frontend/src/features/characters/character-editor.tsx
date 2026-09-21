@@ -1,3 +1,5 @@
+import { UnavailableFeature } from '../../shared/components/unavailable-feature';
+import { useCapabilities, unavailable } from '../../shared/api/use-capabilities';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, assetUrl } from '../../shared/api/client';
@@ -25,6 +27,7 @@ export function CharacterEditor({
   character?: Character;
   onClose: () => void;
 }) {
+  const capabilities = useCapabilities();
   const [value, setValue] = useState<CharacterInput>(
     character
       ? { ...character, profile: { ...defaultProfile, ...character.profile } }
@@ -122,7 +125,9 @@ export function CharacterEditor({
             </>
           )}
           {tab === 'Speech style' && (
-            <>
+            <UnavailableFeature
+              reason={!capabilities.dialogue ? unavailable.speechStyle : undefined}
+            >
               <p className="hint">
                 Speech preferences belong to the character, not their ethnicity. Dialect controls
                 require listening review.
@@ -152,10 +157,12 @@ export function CharacterEditor({
                   onChange={(e) => profile('slang', +e.target.value)}
                 />
               </label>
-            </>
+            </UnavailableFeature>
           )}
           {tab === 'Performance' && (
-            <>
+            <UnavailableFeature
+              reason={!capabilities.animation ? unavailable.performance : undefined}
+            >
               <label>
                 Expressiveness{' '}
                 <span className="range-value">
@@ -188,18 +195,22 @@ export function CharacterEditor({
                   onChange={(e) => profile('gestures', e.target.value)}
                 />
               </label>
-              <label>
-                Voice direction
-                <textarea
-                  value={value.profile.voice_notes}
-                  onChange={(e) => profile('voice_notes', e.target.value)}
-                />
-              </label>
+              <UnavailableFeature
+                reason={capabilities.animation ? unavailable.voiceDirection : undefined}
+              >
+                <label>
+                  Voice direction
+                  <textarea
+                    value={value.profile.voice_notes}
+                    onChange={(e) => profile('voice_notes', e.target.value)}
+                  />
+                </label>
+              </UnavailableFeature>
               <p className="hint">
                 Pace and expressiveness apply to speech. Gesture prompts guide video generation;
                 exact motion and pronunciation need review.
               </p>
-            </>
+            </UnavailableFeature>
           )}
           {tab === 'Assets' && (
             <>

@@ -16,9 +16,7 @@ def status():
             timestamp = datetime.fromisoformat(
                 json.loads(heartbeat.read_text())["updated_at"]
             )
-            worker = (
-                datetime.now(timezone.utc) - timestamp
-            ).total_seconds() < settings.provider_timeout * 3
+            worker = (datetime.now(timezone.utc) - timestamp).total_seconds() < 30
         except (ValueError, KeyError, OSError):
             pass
     return {
@@ -34,7 +32,12 @@ def status():
         "capabilities": {
             "scripted_dialogue": True,
             "storyboard": True,
-            "animated_video": bool(settings.speech_url and settings.video_url),
+            "ai_dialogue": bool(settings.enable_ai_drafts and settings.ollama_url),
+            "animated_video": bool(
+                settings.enable_animated_renders
+                and settings.speech_url
+                and settings.video_url
+            ),
         },
         "limitations": [
             "Speech styles are preferences, not guaranteed dialect controls.",

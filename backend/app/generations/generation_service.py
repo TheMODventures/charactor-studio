@@ -14,6 +14,7 @@ class GenerationService:
         self.repository = repository
 
     def create(self, data):
+        self.check_feature(data.kind)
         db = self.repository.session
         conversation = ConversationRepository(db).get(data.conversation_id)
         scene = SceneRepository(db).get(data.scene_id)
@@ -72,7 +73,16 @@ class GenerationService:
             }
         )
 
+    @staticmethod
+    def check_feature(kind):
+        if kind == "animated" and not settings.enable_animated_renders:
+            raise HTTPException(
+                503,
+                "Animated speech and lip-sync are not functional at the moment for this MVP",
+            )
+
     def retry(self, job):
+        self.check_feature(job.settings["kind"])
         if job.status not in {"failed", "cancelled"}:
             raise HTTPException(409, "Only failed or cancelled jobs can be retried")
         # Preserve the original versioned inputs, even after character edits.

@@ -58,6 +58,13 @@ export function SettingsPage() {
               {checks?.[key]?.message ||
                 (p.configured ? 'Configured · not verified' : 'Not configured')}
             </span>
+            {!(key === 'dialogue'
+              ? status.data?.capabilities.ai_dialogue
+              : status.data?.capabilities.animated_video) && (
+              <p className="hint">
+                Disabled for this MVP. Connection checks do not enable the feature.
+              </p>
+            )}
             <p>
               {key === 'dialogue'
                 ? 'Creates editable dialogue drafts. Scripted mode works without it.'
