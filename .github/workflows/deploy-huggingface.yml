@@ -108,11 +108,17 @@ jobs:
           # renamed or removed file lingers on the Space and keeps getting baked
           # into the image.
           rm -rf stage && mkdir stage
-          cp -a Dockerfile .dockerignore .gitignore README.md package.json package-lock.json stage/
+          # The repo .gitignore is deliberately NOT shipped: it excludes
+          # frontend/dist, which the Space must carry now that the image no
+          # longer builds the bundle. The staged tree is the curated set.
+          cp -a Dockerfile .dockerignore README.md package.json package-lock.json stage/
           cp -a backend frontend scripts docs stage/
           rm -rf stage/frontend/node_modules \
                  stage/frontend/test-results stage/frontend/playwright-report
           find stage -name '__pycache__' -type d -prune -exec rm -rf {} +
+
+          test -f stage/frontend/dist/index.html \
+            || { echo "::error::frontend/dist is missing from the staged tree"; exit 1; }
 
           rsync -a --delete --exclude '.git/' --exclude '.gitattributes' stage/ hf_workspace/
 
@@ -128,6 +134,12 @@ jobs:
           done
 
           git add -A
+
+          # A stray ignore rule silently dropping the bundle is a build error on
+          # the Space, not here, so confirm git actually tracks it.
+          git ls-files --error-unmatch frontend/dist/index.html >/dev/null \
+            || { echo "::error::frontend/dist was not staged by git"; exit 1; }
+
           before=$(git rev-parse HEAD)
           git commit -m "Automated Deploy: ${GITHUB_SHA}" || echo "No changes to commit"
           after=$(git rev-parse HEAD)
