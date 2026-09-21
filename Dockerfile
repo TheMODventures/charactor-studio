@@ -29,6 +29,11 @@ COPY backend/model_services/requirements-lightweight.txt backend/model_services/
 # this off PyPI's CUDA build now that PyPI is reachable again.
 RUN pip install --no-cache-dir torch==2.6.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu \
     && pip install --no-cache-dir -r backend/requirements.txt -r backend/model_services/requirements-lightweight.txt
+# misaki (Kokoro's G2P) needs this spaCy model. Left alone it installs itself on
+# first use, but by then the process runs as studio, so it lands in the user site
+# directory that was absent at interpreter start and is therefore not importable.
+RUN pip install --no-cache-dir \
+    https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
 RUN useradd -m -u 1000 studio
 COPY --chown=studio:studio backend backend
 COPY --chown=studio:studio scripts scripts
