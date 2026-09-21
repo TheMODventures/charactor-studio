@@ -101,6 +101,16 @@ jobs:
           rsync -a --delete --exclude '.git/' --exclude '.gitattributes' stage/ hf_workspace/
 
           cd hf_workspace
+
+          # Hugging Face rejects raw binaries in git. Its default .gitattributes
+          # covers model formats but not image/audio/video, and backend/demo_assets
+          # ships the seeded scene. Patterns must exist BEFORE staging, since the
+          # LFS clean filter only runs at `git add` time.
+          for pattern in '*.png' '*.jpg' '*.jpeg' '*.wav' '*.mp4'; do
+            grep -qF "${pattern} filter=lfs" .gitattributes 2>/dev/null \
+              || echo "${pattern} filter=lfs diff=lfs merge=lfs -text" >> .gitattributes
+          done
+
           git add -A
           before=$(git rev-parse HEAD)
           git commit -m "Automated Deploy: ${GITHUB_SHA}" || echo "No changes to commit"
