@@ -24,7 +24,10 @@ RUN cd /opt/SadTalker && bash scripts/download_models.sh \
 
 COPY backend/requirements.txt backend/requirements.txt
 COPY backend/model_services/requirements-lightweight.txt backend/model_services/requirements-lightweight.txt
-RUN pip install --no-cache-dir torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu \
+# --extra-index-url, not --index-url: the latter replaces PyPI, so a sdist
+# fallback cannot resolve its own build backend. The +cpu pin is what keeps
+# this off PyPI's CUDA build now that PyPI is reachable again.
+RUN pip install --no-cache-dir torch==2.6.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu \
     && pip install --no-cache-dir -r backend/requirements.txt -r backend/model_services/requirements-lightweight.txt
 RUN useradd -m -u 1000 studio
 COPY --chown=studio:studio backend backend
