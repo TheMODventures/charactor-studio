@@ -31,10 +31,14 @@ COPY --chown=studio:studio backend backend
 COPY --chown=studio:studio scripts scripts
 COPY --chown=studio:studio frontend/dist frontend/dist
 # /workspace itself must be writable: the worker heartbeat is written beside
-# ASSETS_DIR, and /data is pre-created so persistent-storage overrides work.
-RUN mkdir -p data assets /home/studio/.cache /data \
-    && chown studio:studio /workspace /data \
-    && chown -R studio:studio data assets /home/studio/.cache /opt/SadTalker
+# ASSETS_DIR. SadTalker writes face-detection weights under its own checkout at
+# first run, so only those subdirectories need handing over — chowning the whole
+# tree would copy up the multi-gigabyte checkpoints into a new layer.
+RUN mkdir -p data assets /home/studio/.cache \
+       /opt/SadTalker/gfpgan/weights /opt/SadTalker/results \
+    && chown studio:studio /workspace /opt/SadTalker \
+    && chown -R studio:studio data assets /home/studio/.cache \
+       /opt/SadTalker/gfpgan /opt/SadTalker/results
 USER studio
 ENV PYTHONUNBUFFERED=1 PYTHONPATH=/workspace/backend HOST=0.0.0.0 PORT=7860 \
     DATABASE_URL=sqlite:////workspace/data/app.db ASSETS_DIR=/workspace/assets \
