@@ -1,12 +1,6 @@
 # Hugging Face Docker Space. Inference runs only on the assigned GPU at runtime.
-FROM node:22-bookworm AS frontend
-WORKDIR /workspace
-COPY package.json package-lock.json ./
-COPY frontend/package.json frontend/package.json
-RUN npm ci
-COPY frontend frontend
-RUN npm run build
-
+# frontend/dist is built in CI and shipped prebuilt, so the Space builder needs
+# no Node toolchain and has one less network dependency that can fail.
 FROM python:3.10-slim-bookworm
 WORKDIR /workspace
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -35,7 +29,7 @@ RUN pip install --no-cache-dir torch==2.6.0 --index-url https://download.pytorch
 RUN useradd -m -u 1000 studio
 COPY --chown=studio:studio backend backend
 COPY --chown=studio:studio scripts scripts
-COPY --from=frontend --chown=studio:studio /workspace/frontend/dist frontend/dist
+COPY --chown=studio:studio frontend/dist frontend/dist
 # /workspace itself must be writable: the worker heartbeat is written beside
 # ASSETS_DIR, and /data is pre-created so persistent-storage overrides work.
 RUN mkdir -p data assets /home/studio/.cache /data \
