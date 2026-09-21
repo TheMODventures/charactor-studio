@@ -36,7 +36,10 @@ RUN useradd -m -u 1000 studio
 COPY --chown=studio:studio backend backend
 COPY --chown=studio:studio scripts scripts
 COPY --from=frontend --chown=studio:studio /workspace/frontend/dist frontend/dist
-RUN mkdir -p data assets /home/studio/.cache \
+# /workspace itself must be writable: the worker heartbeat is written beside
+# ASSETS_DIR, and /data is pre-created so persistent-storage overrides work.
+RUN mkdir -p data assets /home/studio/.cache /data \
+    && chown studio:studio /workspace /data \
     && chown -R studio:studio data assets /home/studio/.cache /opt/SadTalker
 USER studio
 ENV PYTHONUNBUFFERED=1 PYTHONPATH=/workspace/backend HOST=0.0.0.0 PORT=7860 \
