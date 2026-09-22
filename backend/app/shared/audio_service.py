@@ -61,13 +61,15 @@ class AudioService:
         tracks = {i: array("h") for i in character_ids}
         timeline = []
         cursor = 0
-        for turn, clip in zip(turns, clips, strict=True):
+        for index, (turn, clip) in enumerate(zip(turns, clips, strict=True)):
             samples = wav_read(clip)
             length = len(samples)
+            if not samples or not any(samples):
+                raise ValueError("Speech provider returned empty or silent audio. Render again.")
             timeline.append(
                 {**turn, "start": cursor / RATE, "end": (cursor + length) / RATE}
             )
-            gap = int(turn["pause_after"] * RATE)
+            gap = int(turn["pause_after"] * RATE) if index < len(turns) - 1 else 0
             for identity in character_ids:
                 tracks[identity].extend(
                     samples
@@ -77,11 +79,13 @@ class AudioService:
                 tracks[identity].extend(array("h", [0]) * gap)
             cursor += length + gap
         actual = cursor / RATE
-        if abs(actual - target_seconds) > 5:
+        limit = min(target_seconds, 60)
+        if actual > limit:
             raise ValueError(
-                f"Speech is {actual:.1f}s; target is {target_seconds}s ±5s. Edit dialogue or pace and render again. Words were not changed."
+                f"Speech is {actual:.1f}s; the maximum is {limit}s. "
+                "Shorten the dialogue or increase pace and render again. Words were not changed."
             )
-        length = max(cursor, target_seconds * RATE)
+        length = cursor
         paths = []
         for index, identity in enumerate(character_ids):
             tracks[identity].extend(array("h", [0]) * (length - cursor))

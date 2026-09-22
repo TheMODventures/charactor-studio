@@ -66,8 +66,15 @@ def run_generation(job_id: str):
             output = folder / "conversation.mp4"
             if snapshot["kind"] == "storyboard":
                 progress("Rendering silent storyboard", 40)
-                VideoService().storyboard(image, output, snapshot["target_seconds"])
-                duration = snapshot["target_seconds"]
+                # A storyboard has no measured speech; use a reading-time estimate.
+                turns = snapshot["conversation"]["turns"]
+                duration = min(
+                    60,
+                    snapshot["target_seconds"],
+                    max(1, sum(len(t["text"].split()) / 2.3 for t in turns)
+                        + sum(t["pause_after"] for t in turns[:-1])),
+                )
+                VideoService().storyboard(image, output, duration)
             else:
                 providers = snapshot["providers"]
                 if (

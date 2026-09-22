@@ -63,7 +63,10 @@ def download(asset_id: str, db: Session = Depends(get_session)):
         )
         if job:
             storage.get(job.settings["scene"]["image_asset_id"], "image")
-            if job.settings["kind"] == "animated":
+            if (
+                job.settings["kind"] == "animated"
+                and job.settings["providers"]["speech"] == "chatterbox"
+            ):
                 for character in job.settings["characters"]:
                     storage.get(character["voice_asset_id"], "voice")
     path = storage.path(asset)

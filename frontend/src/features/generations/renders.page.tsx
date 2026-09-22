@@ -75,7 +75,10 @@ export function RendersPage() {
                   {job.settings.kind === 'storyboard'
                     ? 'Silent storyboard · no speech or animation'
                     : 'AI-generated conversation · review required'}{' '}
-                  · {job.duration?.toFixed(1) || job.settings.target_seconds}s
+                  ·{' '}
+                  {job.duration != null
+                    ? `${job.duration.toFixed(1)}s`
+                    : `Up to ${job.settings.target_seconds}s`}
                 </p>
                 <div
                   className="progress"

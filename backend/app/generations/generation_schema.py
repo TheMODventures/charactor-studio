@@ -6,8 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 class GenerationCreate(BaseModel):
     conversation_id: str
     scene_id: str
-    kind: Literal["storyboard", "animated"] = "storyboard"
-    target_seconds: int = Field(default=60, ge=10, le=65)
+    kind: Literal["storyboard", "animated"] = "animated"
+    target_seconds: int = Field(default=60, ge=1, le=60)
 
 
 class GenerationRead(BaseModel):

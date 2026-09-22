@@ -28,7 +28,6 @@ export function StudioPage() {
     ],
   });
   const [scriptId, setScriptId] = useState<string>();
-  const [seconds, setSeconds] = useState(60);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
   const [notice, setNotice] = useState('');
@@ -55,7 +54,7 @@ export function StudioPage() {
   const remaining = !sceneValid
     ? 'The demo scene is not available. Check the backend connection.'
     : !scriptValid
-      ? 'Give your conversation a name and fill in each line. Aim for about 120–140 words for 60 seconds.'
+      ? 'Give your conversation a name and fill in each line. Videos follow the conversation length, up to 60 seconds.'
       : !matchingSpeakers
         ? 'Give both characters at least one line.'
         : !script.approved
@@ -78,9 +77,13 @@ export function StudioPage() {
       setScriptId(conversation.id);
       await query.invalidateQueries({ queryKey: ['conversations'] });
       if (kind && scene) {
-        const generation = await api.generate(conversation.id, DEMO_SCENE_ID, kind, seconds);
+        const generation = await api.generate(conversation.id, DEMO_SCENE_ID, kind, 60);
         setJobId(generation.id);
-        setNotice('Conversation saved. Your preview is queued below.');
+        setNotice(
+          kind === 'animated'
+            ? 'Talking video queued with speech and lip-sync.'
+            : 'Silent storyboard preview queued.',
+        );
       } else setNotice('Conversation saved.');
     } catch (e) {
       setError(e);
@@ -126,19 +129,11 @@ export function StudioPage() {
         </div>
         <div className="panel-content">
           <div className="simple-export-row">
-            <label>
-              Duration
-              <select value={seconds} onChange={(e) => setSeconds(+e.target.value)}>
-                <option value={10}>10 seconds</option>
-                <option value={60}>60 seconds</option>
-              </select>
-            </label>
             <p>
-              The storyboard is a silent scene preview.
+              Video length follows your spoken dialogue and pauses, up to 60 seconds.
               <br />
-              {capabilities.animation
-                ? 'Talking videos animate both portraits separately with speech and lip-sync.'
-                : 'Speaking and lip-sync are not available yet.'}
+              Talking videos include voices and lip-sync for both characters. Short conversations
+              produce short videos, without padding to a minute.
             </p>
           </div>
           {remaining && <p className="next-step">{remaining}</p>}
@@ -151,32 +146,39 @@ export function StudioPage() {
               <Save size={16} />
               {busy ? 'Saving…' : 'Save draft'}
             </button>
-            <UnavailableFeature reason={capabilities.workerReason}>
-              <button
-                className="button primary"
-                disabled={busy || !ready}
-                onClick={() => save('storyboard')}
-              >
-                Create storyboard
-                <ArrowRight size={16} />
-              </button>
-            </UnavailableFeature>
             <UnavailableFeature reason={capabilities.animationReason || capabilities.workerReason}>
               <button
-                className="button secondary"
+                className="button primary"
                 disabled={busy || !ready}
                 onClick={() => save('animated')}
               >
                 Create talking video
+                <ArrowRight size={16} />
               </button>
             </UnavailableFeature>
           </div>
+          <details>
+            <summary>Optional silent storyboard preview</summary>
+            <p>
+              This creates a still image video without voices or lip-sync. Duration is estimated
+              from the script.
+            </p>
+            <UnavailableFeature reason={capabilities.workerReason}>
+              <button
+                className="button secondary"
+                disabled={busy || !ready}
+                onClick={() => save('storyboard')}
+              >
+                Create silent storyboard
+              </button>
+            </UnavailableFeature>
+          </details>
         </div>
       </section>
       {jobId && (
         <section className="panel">
           <div className="panel-header">
-            <h2>Your preview</h2>
+            <h2>Your render</h2>
           </div>
           <div className="panel-content">
             <ErrorNotice error={job.error} />

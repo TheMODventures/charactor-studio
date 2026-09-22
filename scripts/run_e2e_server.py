@@ -15,6 +15,8 @@ with tempfile.TemporaryDirectory(prefix="character-e2e-") as folder:
         "DATABASE_URL": "sqlite:///" + folder + "/app.db",
         "ASSETS_DIR": folder + "/assets",
         "SEED_CHARACTERS": "true",
+        "FIXED_DEMO_MODE": "true",
+        "ENABLE_ANIMATED_RENDERS": "false",
         "SPEECH_URL": "",
         "VIDEO_URL": "",
     }

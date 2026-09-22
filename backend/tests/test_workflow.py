@@ -131,6 +131,7 @@ def test_real_storyboard_render(client):
             "conversation_id": script["id"],
             "scene_id": scene["id"],
             "target_seconds": 10,
+            "kind": "storyboard",
         },
     )
     assert response.status_code == 201
@@ -140,7 +141,7 @@ def test_real_storyboard_render(client):
     run_generation(job_id)
     job = client.get(f"/api/v1/generations/{job_id}").json()
     assert job["status"] == "completed", job
-    assert job["duration"] == 10
+    assert 0 < job["duration"] < 10
     video = client.get(f"/api/v1/assets/{job['output_asset_id']}/file")
     assert video.status_code == 200 and b"ftyp" in video.content[:64]
     assert (
@@ -174,7 +175,7 @@ def test_gpu_not_faked_and_revocation(client):
     assert (
         client.post(
             "/api/v1/generations",
-            json={"conversation_id": script["id"], "scene_id": scene["id"]},
+            json={"conversation_id": script["id"], "scene_id": scene["id"], "kind": "storyboard"},
         ).status_code
         == 404
     )
@@ -193,9 +194,93 @@ def test_audio_alignment_and_duration(tmp_path):
     paths, timeline, duration = AudioService().align(
         turns, clips, ["a", "b"], tmp_path, 10
     )
-    assert duration == 10 and timeline[1]["start"] == 5 and len(paths) == 2
+    assert duration == 9 and timeline[1]["start"] == 5 and len(paths) == 2
     from app.shared.audio_service import wav_read
 
     assert max(wav_read(paths[1])[: RATE * 5]) == 0
+    _, _, duration = AudioService().align(turns, clips, ["a", "b"], tmp_path, 60)
+    assert duration == 9
     with pytest.raises(ValueError, match="Words were not changed"):
-        AudioService().align(turns, clips, ["a", "b"], tmp_path, 60)
+        AudioService().align(turns, clips, ["a", "b"], tmp_path, 8)
+
+
+def test_generation_defaults_and_maximum(client):
+    from app.generations.generation_schema import GenerationCreate
+    from pydantic import ValidationError
+
+    assert GenerationCreate(conversation_id="c", scene_id="s").kind == "animated"
+    for seconds in (0, 61, 65):
+        with pytest.raises(ValidationError):
+            GenerationCreate(conversation_id="c", scene_id="s", target_seconds=seconds)
+
+
+def test_audio_limit_and_silent_provider(tmp_path):
+    from app.shared.audio_service import wav_read
+
+    clip = tmp_path / "voice.wav"
+    turns = [{"character_id": "a", "text": "hello", "pause_after": 5}]
+    wav_write(clip, array("h", [1000]) * RATE * 60)
+    paths, _, duration = AudioService().align(turns, [clip], ["a", "b"], tmp_path, 60)
+    assert duration == 60
+    assert len(wav_read(paths[0])) == RATE * 60
+    wav_write(clip, array("h", [1000]) * (RATE * 60 + 1))
+    with pytest.raises(ValueError, match="maximum is 60s"):
+        AudioService().align(turns, [clip], ["a", "b"], tmp_path, 65)
+    wav_write(clip, array("h", [0]) * RATE)
+    with pytest.raises(ValueError, match="silent audio"):
+        AudioService().align(turns, [clip], ["a", "b"], tmp_path, 60)
+
+
+def test_animated_worker_exports_short_video_with_audio(client, monkeypatch, tmp_path):
+    """Stub model inference only; exercise real alignment, muxing and publication."""
+    import math
+    import subprocess
+    import imageio_ffmpeg
+    from app.config import settings
+    from app.generations import generation_worker, generation_service
+    from app.shared.audio_service import wav_read
+
+    monkeypatch.setattr(settings, "enable_animated_renders", True)
+    monkeypatch.setattr(settings, "speech_provider", "kokoro")
+    monkeypatch.setattr(settings, "video_provider", "sadtalker")
+    monkeypatch.setattr(settings, "speech_url", "http://test-model")
+    monkeypatch.setattr(settings, "video_url", "http://test-model")
+    monkeypatch.setattr(generation_service, "lightweight_ready", lambda: True)
+
+    class Speech:
+        def synthesize(self, text, voice, output, profile):
+            wav_write(output, array("h", (int(4000 * math.sin(2 * math.pi * 440 * i / RATE)) for i in range(RATE))))
+            return output
+
+    class Video:
+        def generate(self, image, tracks, output, prompt):
+            duration = len(wav_read(tracks[0])) / RATE
+            assert duration == pytest.approx(2.4)
+            assert len(wav_read(tracks[1])) == len(wav_read(tracks[0]))
+            subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-f", "lavfi", "-i",
+                            "testsrc2=size=128x128:rate=25", "-t", str(duration),
+                            "-c:v", "libx264", str(output)], check=True, capture_output=True)
+            return output
+
+    monkeypatch.setattr(generation_worker, "speech_provider", lambda _: Speech())
+    monkeypatch.setattr(generation_worker, "video_provider", lambda _: Video())
+    script, scene = setup_project(client)
+    response = client.post("/api/v1/generations", json={"conversation_id": script["id"], "scene_id": scene["id"]})
+    assert response.status_code == 201, response.text
+    job_id = response.json()["id"]
+    assert claim_job() == job_id
+    run_generation(job_id)
+    job = client.get(f"/api/v1/generations/{job_id}").json()
+    assert job["status"] == "completed", job
+    assert job["duration"] == pytest.approx(2.4)
+    output = tmp_path / "output.mp4"
+    download = client.get(f"/api/v1/assets/{job['output_asset_id']}/file")
+    assert download.status_code == 200, download.text
+    output.write_bytes(download.content)
+    decoded = tmp_path / "decoded.wav"
+    AudioService().normalize(output, decoded)
+    samples = wav_read(decoded)
+    assert max(samples) > 1000
+    assert len(samples) / RATE == pytest.approx(2.4, abs=0.1)
+    result = subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-i", str(output), "-map", "0:v:0", "-f", "null", "-"], capture_output=True)
+    assert result.returncode == 0

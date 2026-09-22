@@ -61,10 +61,7 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
-      # Non-blocking: these suites predate FIXED_DEMO_MODE and currently fail.
-      # Flip continue-on-error off once they are updated.
-      - name: Backend tests (advisory)
-        continue-on-error: true
+      - name: Backend regression tests
         run: |
           pip install -r backend/requirements-dev.txt
           PYTHONPATH=backend pytest backend/tests -q

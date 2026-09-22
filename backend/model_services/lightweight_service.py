@@ -16,6 +16,7 @@ from fastapi.responses import Response
 
 app = FastAPI(title="Kokoro and SadTalker")
 lock = threading.Lock()
+runtime_lock = threading.Lock()
 VOICES = {"af_heart", "af_bella"}
 
 
@@ -83,7 +84,7 @@ def health(authorization: str = Header(default="")):
     ]
     if not all(p.is_file() for p in required):
         raise HTTPException(503, "Install SadTalker environment and checkpoints")
-    with lock:
+    with runtime_lock:
         check_runtime()
     return {"status": "ok", "model": "kokoro+sadtalker", "inference_verified": False}
 
@@ -155,9 +156,9 @@ def generate(
             save_upload(upload, path)
         lengths = [wav_duration(path) for path in tracks]
         duration = lengths[0]
-        if not 1 <= duration <= 65 or abs(duration - lengths[1]) > 0.04:
+        if not 0 < duration <= 60 or abs(duration - lengths[1]) > 0.04:
             raise HTTPException(
-                422, "Supply two aligned tracks of equal length, up to 65 seconds"
+                422, "Supply two aligned tracks of equal length, up to 60 seconds"
             )
         portraits = []
         for side in range(2):
