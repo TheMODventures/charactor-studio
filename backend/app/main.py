@@ -45,10 +45,16 @@ def frontend_app(path: str):
         raise HTTPException(404, "Route not found")
     candidate = (frontend / path).resolve()
     if candidate.is_relative_to(frontend.resolve()) and candidate.is_file():
-        return FileResponse(candidate)
+        return FileResponse(
+            candidate,
+            headers={"Cache-Control": "public, max-age=31536000, immutable"}
+            if path.startswith("assets/") else {"Cache-Control": "no-cache"},
+        )
+    if path.startswith("assets/") or Path(path).suffix:
+        raise HTTPException(404, "Frontend asset not found")
     index = frontend / "index.html"
     if not index.is_file():
         raise HTTPException(
             404, "Build the frontend or start the Vite development server"
         )
-    return FileResponse(index)
+    return FileResponse(index, headers={"Cache-Control": "no-cache"})

@@ -117,7 +117,9 @@ jobs:
           test -f stage/frontend/dist/index.html \
             || { echo "::error::frontend/dist is missing from the staged tree"; exit 1; }
 
-          rsync -a --delete --exclude '.git/' --exclude '.gitattributes' stage/ hf_workspace/
+          rsync -a --checksum --delete --exclude '.git/' --exclude '.gitattributes' stage/ hf_workspace/
+
+          python3 scripts/verify_frontend.py hf_workspace/frontend/dist
 
           cd hf_workspace
 
